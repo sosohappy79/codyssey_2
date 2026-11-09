@@ -94,6 +94,30 @@ class QuizGame:
                 continue
             return answer, hint_used
 
+    def _read_non_empty(self, prompt):
+        while True:
+            value = input(prompt).strip()
+            if value:
+                return value
+            print("⚠️ 빈 입력은 사용할 수 없습니다. 다시 입력하세요.")
+
+    def add_quiz(self):
+        print("\n📌 새로운 퀴즈를 추가합니다.")
+        question = self._read_non_empty("문제를 입력하세요: ")
+        choices = []
+        for number in range(1, 5):
+            choices.append(self._read_non_empty(f"선택지 {number}: "))
+        answer = self._read_number("정답 번호 (1-4): ", 1, 4)
+        hint = self._read_non_empty("힌트를 입력하세요: ")
+
+        try:
+            quiz = Quiz(question, choices, answer, hint)
+        except ValueError as error:
+            print(f"⚠️ 퀴즈를 추가하지 못했습니다: {error}")
+            return
+        self.quizzes.append(quiz)
+        print("✅ 퀴즈가 추가되었습니다!")
+
     def play_quiz(self):
         if not self.quizzes:
             print("등록된 퀴즈가 없습니다. 먼저 퀴즈를 추가하세요.")
@@ -134,6 +158,8 @@ class QuizGame:
             choice = self._read_menu_choice()
             if choice == 1:
                 self.play_quiz()
+            elif choice == 2:
+                self.add_quiz()
             elif choice == 5:
                 print("퀴즈 게임을 종료합니다.")
                 break
