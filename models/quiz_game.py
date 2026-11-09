@@ -232,24 +232,31 @@ class QuizGame:
             )
         print("-" * 65)
 
+    def _handle_menu_choice(self, choice):
+        """메뉴 번호에 해당하는 기능을 실행하고 계속 진행할지 반환합니다."""
+        actions = {
+            1: self.play_quiz,
+            2: self.add_quiz,
+            3: self.show_quizzes,
+            4: self.show_best_score,
+            5: self.delete_quiz,
+            6: self.show_history,
+        }
+        if choice == 7:
+            print("퀴즈 게임을 종료합니다.")
+            return False
+
+        action = actions.get(choice)
+        if action is not None:
+            action()
+        else:
+            print("⚠️ 올바른 메뉴 번호를 선택하세요.")
+        return True
+
     def run(self):
-        while True:
+        """메뉴를 반복해서 표시하고 사용자의 선택에 따라 게임을 진행합니다."""
+        keep_running = True
+        while keep_running:
             self._show_menu()
             choice = self._read_menu_choice()
-            if choice == 1:
-                self.play_quiz()
-            elif choice == 2:
-                self.add_quiz()
-            elif choice == 3:
-                self.show_quizzes()
-            elif choice == 4:
-                self.show_best_score()
-            elif choice == 5:
-                self.delete_quiz()
-            elif choice == 6:
-                self.show_history()
-            elif choice == 7:
-                print("퀴즈 게임을 종료합니다.")
-                break
-            else:
-                print("선택한 기능은 다음 단계에서 구현합니다.")
+            keep_running = self._handle_menu_choice(choice)
