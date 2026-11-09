@@ -1,5 +1,7 @@
+import json
 import random
 from datetime import datetime
+from pathlib import Path
 
 from models.quiz import Quiz
 
@@ -13,6 +15,7 @@ class QuizGame:
         self.best_correct = 0
         self.best_total = 0
         self.history = []
+        self.state_path = Path(__file__).resolve().parent.parent / "state.json"
 
     @staticmethod
     def _create_default_quizzes():
@@ -136,6 +139,7 @@ class QuizGame:
         if confirmation == "y":
             deleted = self.quizzes.pop(quiz_number - 1)
             print(f"✅ 퀴즈를 삭제했습니다: {deleted.question}")
+            self.save_data(show_message=True)
         else:
             print("퀴즈 삭제를 취소했습니다.")
 
@@ -155,6 +159,7 @@ class QuizGame:
             return
         self.quizzes.append(quiz)
         print("✅ 퀴즈가 추가되었습니다!")
+        self.save_data(show_message=True)
 
     def play_quiz(self):
         if not self.quizzes:
@@ -190,6 +195,7 @@ class QuizGame:
         print(f"힌트 사용: {hint_count}회 / 최종 점수: {score}점")
         print("=" * 40)
         self._record_game_result(question_count, correct_count, hint_count, score)
+        self.save_data(show_message=True)
 
     def _record_game_result(self, question_count, correct_count, hint_count, score):
         """게임 기록을 남기고 최고 점수를 갱신합니다."""
@@ -232,6 +238,125 @@ class QuizGame:
             )
         print("-" * 65)
 
+    def load_data(self):
+        """프로젝트 루트 state.json에서 퀴즈와 점수 데이터를 불러옵니다."""
+        if not self.state_path.exists():
+            print(f"📂 저장 파일이 없어 기본 퀴즈 {len(self.quizzes)}개로 시작합니다.")
+            return
+
+        try:
+            with self.state_path.open("r", encoding="utf-8") as file:
+                data = json.load(file)
+
+            if not isinstance(data, dict):
+                raise ValueError("최상위 데이터는 JSON 객체여야 합니다.")
+            if data.get("schema_version", 1) != 1:
+                raise ValueError("지원하지 않는 데이터 파일 버전입니다.")
+
+            quiz_data = data.get("quizzes")
+            if not isinstance(quiz_data, list):
+                raise ValueError("quizzes 항목은 리스트여야 합니다.")
+            loaded_quizzes = []
+            for item in quiz_data:
+                if not isinstance(item, dict):
+                    raise ValueError("퀴즈 항목의 형식이 올바르지 않습니다.")
+                loaded_quizzes.append(Quiz.from_dict(item))
+
+            best_score = data.get("best_score")
+            if best_score is not None and (
+                type(best_score) is not int or not 0 <= best_score <= 100
+            ):
+                raise ValueError("best_score 값이 올바르지 않습니다.")
+
+            best_correct = data.get("best_correct", 0)
+            best_total = data.get("best_total", 0)
+            if type(best_correct) is not int or best_correct < 0:
+                raise ValueError("best_correct 값이 올바르지 않습니다.")
+            if type(best_total) is not int or best_total < 0:
+                raise ValueError("best_total 값이 올바르지 않습니다.")
+
+            history_data = data.get("history", [])
+            if not isinstance(history_data, list):
+                raise ValueError("history 항목은 리스트여야 합니다.")
+            loaded_history = []
+            for record in history_data:
+                if not isinstance(record, dict):
+                    raise ValueError("게임 기록 항목의 형식이 올바르지 않습니다.")
+                date = record.get("date")
+                question_count = record.get("question_count")
+                correct_count = record.get("correct_count")
+                hint_count = record.get("hint_count", 0)
+                score = record.get("score")
+                if not isinstance(date, str):
+                    raise ValueError("게임 기록 날짜가 올바르지 않습니다.")
+                if type(question_count) is not int or question_count <= 0:
+                    raise ValueError("게임 기록 문제 수가 올바르지 않습니다.")
+                if type(correct_count) is not int or not 0 <= correct_count <= question_count:
+                    raise ValueError("게임 기록 정답 수가 올바르지 않습니다.")
+                if type(hint_count) is not int or not 0 <= hint_count <= question_count:
+                    raise ValueError("게임 기록 힌트 수가 올바르지 않습니다.")
+                if type(score) is not int or not 0 <= score <= 100:
+                    raise ValueError("게임 기록 점수가 올바르지 않습니다.")
+                loaded_history.append(
+                    {
+                        "date": date,
+                        "question_count": question_count,
+                        "correct_count": correct_count,
+                        "hint_count": hint_count,
+                        "score": score,
+                    }
+                )
+
+            self.quizzes = loaded_quizzes
+            self.best_score = best_score
+            self.best_correct = best_correct
+            self.best_total = best_total
+            self.history = loaded_history
+            score_text = "기록 없음" if best_score is None else f"최고 점수 {best_score}점"
+            print(
+                f"📂 저장된 데이터를 불러왔습니다. "
+                f"(퀴즈 {len(self.quizzes)}개, {score_text})"
+            )
+        except (OSError, json.JSONDecodeError, TypeError, ValueError, KeyError) as error:
+            print(
+                "⚠️ 저장 데이터가 없거나 손상되어 기본 퀴즈 데이터로 초기화합니다. "
+                f"(원인: {error})"
+            )
+            self.quizzes = self._create_default_quizzes()
+            self.best_score = None
+            self.best_correct = 0
+            self.best_total = 0
+            self.history = []
+
+    def save_data(self, show_message=False):
+        """현재 데이터를 UTF-8 JSON 파일에 안전하게 저장합니다."""
+        data = {
+            "schema_version": 1,
+            "quizzes": [quiz.to_dict() for quiz in self.quizzes],
+            "best_score": self.best_score,
+            "best_correct": self.best_correct,
+            "best_total": self.best_total,
+            "history": self.history,
+        }
+        temporary_path = self.state_path.with_name(self.state_path.name + ".tmp")
+        try:
+            with temporary_path.open("w", encoding="utf-8") as file:
+                json.dump(data, file, ensure_ascii=False, indent=4)
+                file.write("\n")
+            temporary_path.replace(self.state_path)
+            if show_message:
+                print("💾 데이터 저장이 완료되었습니다.")
+            return True
+        except (OSError, TypeError, ValueError) as error:
+            print(f"⚠️ 데이터 저장에 실패했습니다: {error}")
+            return False
+        finally:
+            try:
+                if temporary_path.exists():
+                    temporary_path.unlink()
+            except OSError:
+                pass
+
     def _handle_menu_choice(self, choice):
         """메뉴 번호에 해당하는 기능을 실행하고 계속 진행할지 반환합니다."""
         actions = {
@@ -254,9 +379,17 @@ class QuizGame:
         return True
 
     def run(self):
-        """메뉴를 반복해서 표시하고 사용자의 선택에 따라 게임을 진행합니다."""
-        keep_running = True
-        while keep_running:
-            self._show_menu()
-            choice = self._read_menu_choice()
-            keep_running = self._handle_menu_choice(choice)
+        """메뉴를 실행하고 중단 신호가 발생해도 데이터를 저장한 뒤 종료합니다."""
+        try:
+            self.load_data()
+            keep_running = True
+            while keep_running:
+                self._show_menu()
+                choice = self._read_menu_choice()
+                keep_running = self._handle_menu_choice(choice)
+        except KeyboardInterrupt:
+            print("\n⚠️ Ctrl+C 입력이 감지되었습니다. 데이터를 저장하고 안전하게 종료합니다.")
+        except EOFError:
+            print("\n⚠️ 입력이 종료되었습니다. 데이터를 저장하고 안전하게 종료합니다.")
+        finally:
+            self.save_data()
