@@ -37,23 +37,25 @@ class QuizGame:
         print("2. 퀴즈 추가")
         print("3. 퀴즈 목록")
         print("4. 점수 확인")
-        print("5. 종료")
+        print("5. 퀴즈 삭제")
+        print("6. 점수 기록 히스토리")
+        print("7. 종료")
         print("=" * 40)
 
     def _read_menu_choice(self):
         while True:
             value = input("선택: ").strip()
             if not value:
-                print("⚠️ 빈 입력입니다. 1-5 사이의 숫자를 입력하세요.")
+                print("⚠️ 빈 입력입니다. 1-7 사이의 숫자를 입력하세요.")
                 continue
             try:
                 choice = int(value)
             except ValueError:
                 print("⚠️ 숫자를 입력하세요.")
                 continue
-            if 1 <= choice <= 5:
+            if 1 <= choice <= 7:
                 return choice
-            print("⚠️ 잘못된 입력입니다. 1-5 사이의 숫자를 입력하세요.")
+            print("⚠️ 잘못된 입력입니다. 1-7 사이의 숫자를 입력하세요.")
 
     def _read_number(self, prompt, minimum, maximum):
         while True:
@@ -100,6 +102,40 @@ class QuizGame:
             if value:
                 return value
             print("⚠️ 빈 입력은 사용할 수 없습니다. 다시 입력하세요.")
+
+    def show_quizzes(self):
+        if not self.quizzes:
+            print("등록된 퀴즈가 없습니다.")
+            return
+        print(f"\n📋 등록된 퀴즈 목록 (총 {len(self.quizzes)}개)")
+        print("-" * 40)
+        for number, quiz in enumerate(self.quizzes, start=1):
+            print(f"[{number}] {quiz.question}")
+        print("-" * 40)
+
+    def delete_quiz(self):
+        if not self.quizzes:
+            print("삭제할 퀴즈가 없습니다.")
+            return
+        self.show_quizzes()
+        quiz_number = self._read_number(
+            f"삭제할 퀴즈 번호 (1-{len(self.quizzes)}, 취소는 0): ",
+            0,
+            len(self.quizzes),
+        )
+        if quiz_number == 0:
+            print("퀴즈 삭제를 취소했습니다.")
+            return
+        while True:
+            confirmation = input("정말 삭제할까요? (y/n): ").strip().lower()
+            if confirmation in ("y", "n"):
+                break
+            print("⚠️ y 또는 n을 입력하세요.")
+        if confirmation == "y":
+            deleted = self.quizzes.pop(quiz_number - 1)
+            print(f"✅ 퀴즈를 삭제했습니다: {deleted.question}")
+        else:
+            print("퀴즈 삭제를 취소했습니다.")
 
     def add_quiz(self):
         print("\n📌 새로운 퀴즈를 추가합니다.")
@@ -160,7 +196,11 @@ class QuizGame:
                 self.play_quiz()
             elif choice == 2:
                 self.add_quiz()
+            elif choice == 3:
+                self.show_quizzes()
             elif choice == 5:
+                self.delete_quiz()
+            elif choice == 7:
                 print("퀴즈 게임을 종료합니다.")
                 break
             else:
