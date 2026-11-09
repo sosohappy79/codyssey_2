@@ -1,4 +1,5 @@
 import random
+from datetime import datetime
 
 from models.quiz import Quiz
 
@@ -11,6 +12,7 @@ class QuizGame:
         self.best_score = None
         self.best_correct = 0
         self.best_total = 0
+        self.history = []
 
     @staticmethod
     def _create_default_quizzes():
@@ -187,6 +189,48 @@ class QuizGame:
         print(f"🏆 결과: {question_count}문제 중 {correct_count}문제 정답!")
         print(f"힌트 사용: {hint_count}회 / 최종 점수: {score}점")
         print("=" * 40)
+        self._record_game_result(question_count, correct_count, hint_count, score)
+
+    def _record_game_result(self, question_count, correct_count, hint_count, score):
+        """게임 기록을 남기고 최고 점수를 갱신합니다."""
+        self.history.append(
+            {
+                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "question_count": question_count,
+                "correct_count": correct_count,
+                "hint_count": hint_count,
+                "score": score,
+            }
+        )
+        if self.best_score is None or score > self.best_score:
+            self.best_score = score
+            self.best_correct = correct_count
+            self.best_total = question_count
+            print("🎉 새로운 최고 점수입니다!")
+
+    def show_best_score(self):
+        if self.best_score is None:
+            print("아직 퀴즈를 푼 기록이 없습니다.")
+            return
+        print(
+            f"🏆 최고 점수: {self.best_score}점 "
+            f"({self.best_total}문제 중 {self.best_correct}문제 정답)"
+        )
+
+    def show_history(self):
+        if not self.history:
+            print("아직 저장된 게임 기록이 없습니다.")
+            return
+        print(f"\n📚 게임 기록 (총 {len(self.history)}회)")
+        print("-" * 65)
+        for number, record in enumerate(reversed(self.history), start=1):
+            print(
+                f"{number}. {record['date']} | "
+                f"{record['question_count']}문제 | "
+                f"정답 {record['correct_count']}개 | "
+                f"힌트 {record['hint_count']}회 | {record['score']}점"
+            )
+        print("-" * 65)
 
     def run(self):
         while True:
@@ -198,8 +242,12 @@ class QuizGame:
                 self.add_quiz()
             elif choice == 3:
                 self.show_quizzes()
+            elif choice == 4:
+                self.show_best_score()
             elif choice == 5:
                 self.delete_quiz()
+            elif choice == 6:
+                self.show_history()
             elif choice == 7:
                 print("퀴즈 게임을 종료합니다.")
                 break
