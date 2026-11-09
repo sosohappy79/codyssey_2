@@ -1,0 +1,16 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Runtime data and temporary files
+state.json
+state.json.tmp
+
+# Operating system files
+.DS_Store
+Thumbs.db
